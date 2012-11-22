@@ -17,33 +17,37 @@ import android.location.LocationManager;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.os.Handler;
 import android.view.Menu;
+import android.view.View;
+import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
+
+	final String[] hackMAC = new String[] { "", "" };
 
 	List<ScanResult> wifiList;
 	WifiManager myWifiManager;
 	WifiScanner myWifiScanner;
 	LocationManager locationManager;
 	LocationListener mlocListener;
-	ArrayList<ArrayList<String>> dataArray;
+	Button startBtn;
+
+	ArrayList<ArrayList<String>> wifiDataArray;
 	ArrayList<String> wifiArray;
+
 	// SSID MAC FREQ LEVEL
 	ArrayList<String> locationArray;
 	// LONGITUDE LATITUDE
 	double getLong = 0;
 	double getLat = 0;
+	int timeCounter = 0;
+	int clickFlag = 0;
 
 	String[] AccessPoint;
-	String[] Coordinate;
-	int temp = 0;
-
-	Button bt;
-	FileWriter fw;
-	BufferedWriter bw;
-	int wifi_update_no, output_update_no, write_count;
+	private Handler handler;
 
 	class WifiScanner extends BroadcastReceiver {
 
@@ -65,24 +69,22 @@ public class MainActivity extends Activity {
 				AccessPoint = new String[wifiList.size()]; // 分析剛剛掃描的wifi資料，方便print
 															// out
 				String str = "";
+				wifiDataArray = new ArrayList<ArrayList<String>>();
 				for (int i = 0; i < wifiList.size(); i++) {
 					AccessPoint[i] = "SSID:, " + wifiList.get(i).SSID
 							+ "  ,MAC:, " + wifiList.get(i).BSSID
 							+ "  ,freqency:, " + wifiList.get(i).frequency
 							+ "  ,Level:, " + wifiList.get(i).level + ", \r\n";
 					str += AccessPoint[i];
-					wifiArray.add(wifiList.get(i).SSID);
-					wifiArray.add(wifiList.get(i).BSSID);
-					wifiArray.add(String.valueOf(wifiList.get(i).frequency));
-					wifiArray.add(String.valueOf(wifiList.get(i).level));
+					wifiArray.set(0, wifiList.get(i).SSID);
+					wifiArray.set(1, wifiList.get(i).BSSID);
+					wifiArray.set(2, String.valueOf(wifiList.get(i).frequency));
+					wifiArray.set(3, String.valueOf(wifiList.get(i).level));
+					ArrayList<String> list = new ArrayList<String>(wifiArray);
+					wifiDataArray.add(list);
 
 				}
 
-				if (write_count > 0 && temp != AccessPoint.length) {
-					write_count = write_count - 1;
-					// write_199();
-					temp = AccessPoint.length;
-				}
 			} catch (InterruptedException e) {
 
 			}// 兩百筆之間隔 1000ms
@@ -94,7 +96,12 @@ public class MainActivity extends Activity {
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+		startBtn = (Button) findViewById(R.id.button1);
+
 		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_NOSENSOR);
+		locationArray = new ArrayList<String>();
+		wifiArray = new ArrayList<String>();
+
 		locationArray.add(String.valueOf(0));
 		locationArray.add(String.valueOf(0));
 		wifiArray.add(String.valueOf(0));
@@ -121,7 +128,64 @@ public class MainActivity extends Activity {
 		myFilter.addAction(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
 		registerReceiver(myWifiScanner, myFilter);
 
+		// locationManager.requestLocationUpdates(
+		// LocationManager.NETWORK_PROVIDER, 0, 0, mlocListener);
+
+		handler = new Handler();
+
+		startBtn.setOnClickListener(new Button.OnClickListener() {
+
+			@Override
+			public void onClick(View arg0) {
+				// TODO Auto-generated method stub
+				if (clickFlag == 0) {
+					handler.removeCallbacks(updateLocation);
+					handler.postDelayed(updateLocation, 0);
+					clickFlag = 1;
+				} else {
+					handler.removeCallbacks(updateLocation);
+				}
+
+			}
+
+		});
+
 	}
+
+	Runnable updateLocation = new Runnable() {
+
+		@Override
+		public void run() {
+			// TODO Auto-generated method stub
+			timeCounter += 1000; // 1 sec.
+
+			locationManager.requestLocationUpdates(
+					LocationManager.NETWORK_PROVIDER, 0, 0, mlocListener);
+
+			if (timeCounter % 5000 == 0) {
+				if (!locationArray.get(0).equals("0")) {
+					String str = "";
+					for (int i = 0; i < wifiDataArray.size(); i++) {
+						for (int j = 0; j < wifiDataArray.get(i).size(); j++) {
+							str += wifiDataArray.get(i).get(j);
+							str += " ";
+						}
+						str += "\n";
+					}
+					str += "\n";
+					for (int i = 0; i < locationArray.size(); i++) {
+						str += locationArray.get(i);
+					}
+
+					Toast.makeText(getApplicationContext(), str,
+							Toast.LENGTH_LONG).show();
+				}
+			}
+			handler.removeCallbacks(updateLocation);
+			handler.postDelayed(updateLocation, 1000);
+		}
+
+	};
 
 	public class MyLocationListener implements LocationListener {
 
