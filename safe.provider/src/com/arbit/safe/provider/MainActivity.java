@@ -1,9 +1,10 @@
 package com.arbit.safe.provider;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+
+//import cache.wifi.LocationCacheDatabase;
 
 import android.app.Activity;
 import android.content.BroadcastReceiver;
@@ -20,11 +21,12 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.view.Menu;
 import android.view.View;
-import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
+
+	private final static String WIFI_CACHE_PATH = "/data/data/com.google.android.location/files/cache.wifi";
 
 	final String[] hackMAC = new String[] { "", "" };
 
@@ -37,10 +39,11 @@ public class MainActivity extends Activity {
 
 	ArrayList<ArrayList<String>> wifiDataArray;
 	ArrayList<String> wifiArray;
-
 	// SSID MAC FREQ LEVEL
 	ArrayList<String> locationArray;
 	// LONGITUDE LATITUDE
+	
+
 	double getLong = 0;
 	double getLat = 0;
 	int timeCounter = 0;
@@ -48,6 +51,11 @@ public class MainActivity extends Activity {
 
 	String[] AccessPoint;
 	private Handler handler;
+
+	private File mWifiCache = null;
+	private boolean mWifiCacheExist = false;
+	private LocationCacheDatabase mWifiCacheDatabase = null;
+	protected ArrayList<String> mCommands = null;
 
 	class WifiScanner extends BroadcastReceiver {
 
@@ -142,7 +150,9 @@ public class MainActivity extends Activity {
 					handler.removeCallbacks(updateLocation);
 					handler.postDelayed(updateLocation, 0);
 					clickFlag = 1;
+					startBtn.setText("stop request");
 				} else {
+					startBtn.setText("start request");
 					handler.removeCallbacks(updateLocation);
 				}
 
@@ -186,6 +196,41 @@ public class MainActivity extends Activity {
 		}
 
 	};
+
+	void createFile() {
+		mWifiCache = new File(WIFI_CACHE_PATH);
+	}
+
+	private void checkCache() {
+		mWifiCacheExist = mWifiCache.exists();
+
+		if (!mWifiCacheExist || mWifiCache.length() < 4) {
+			// mWifiCacheStatus.setText("Cache Doesn't Exist");
+		} else {
+			// mWifiCacheStatus.setText("Cache Exists");
+			// readCache(1);
+		}
+	}
+	
+	private void readCache(int f) {
+//		if(execute()){
+//			try {
+//				if(mCellCacheExist){
+//					mCellCacheDatabase=new LocationCacheDatabase("cell",BUF_CELL_CACHE_PATH);
+//				}
+//				if(mWifiCacheExist){
+//					mWifiCacheDatabase=new LocationCacheDatabase("wifi",BUF_WIFI_CACHE_PATH);
+//				}
+//				Toast.makeText(getApplication(), "Cache Copied", Toast.LENGTH_SHORT).show();
+//			} catch (Exception e) {
+//				e.printStackTrace();
+//			}
+//			setStatus();
+//		}else{
+//			Toast.makeText(getApplication(), "Faied to Copy", Toast.LENGTH_SHORT).show();
+//		}
+	}
+	
 
 	public class MyLocationListener implements LocationListener {
 
