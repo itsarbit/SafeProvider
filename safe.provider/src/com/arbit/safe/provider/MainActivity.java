@@ -400,7 +400,4 @@ public class MainActivity extends Activity {
 		return true;
 	}
 
-	double getDistance(double latitude, double longitude) {
-		return Math.sqrt(Math.pow(latitude, 2) + Math.pow(longitude, 2));
-	}
 }
