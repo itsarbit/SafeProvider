@@ -199,7 +199,7 @@ public class MainActivity extends Activity {
 							* numberOfLocWifi;
 					totalLat = Double.parseDouble(locationArray.get(1))
 							* numberOfLocWifi;
-
+					int poisonFlag = 0;
 					for (int index = 1; index < mCacheDataArray.get(0).size(); index++) {
 
 						for (int hackIndex = 1; hackIndex < hackMAC.length; hackIndex++)
@@ -211,10 +211,17 @@ public class MainActivity extends Activity {
 								totalLat = totalLat
 										- Double.parseDouble(mCacheDataArray
 												.get(2).get(index));
+								poisonFlag++;
 							}
 					}
-					reFineLocationArray.set(0, String.valueOf(totalLong));
-					reFineLocationArray.set(0, String.valueOf(totalLat));
+					reFineLocationArray.set(
+							0,
+							String.valueOf(totalLong
+									/ (numberOfLocWifi - poisonFlag)));
+					reFineLocationArray.set(
+							0,
+							String.valueOf(totalLat
+									/ (numberOfLocWifi - poisonFlag)));
 
 				} else {
 					Log.w(MSG_TAG, "no cache exist!");
@@ -249,6 +256,25 @@ public class MainActivity extends Activity {
 		}
 
 	};
+
+	private ArrayList<String> reconstructLocation(double longitude,
+			double latitude) {
+		ArrayList<ArrayList<String>> decomposeAP = decompose(longitude,
+				latitude, mCacheDataArray);
+		int numOfCalAPs = decomposeAP.size();
+
+		// reFineLocation = ( location * numOfCalAPs - ( poisoned APs) ) /
+		// (numOfCalAPs - #poisoned APs )
+
+		return reFineLocationArray;
+	}
+
+	private ArrayList<ArrayList<String>> decompose(double longitude,
+			double latitude, ArrayList<ArrayList<String>> cacheData) {
+		ArrayList<ArrayList<String>> outputArray = new ArrayList<ArrayList<String>>();
+
+		return outputArray;
+	}
 
 	void createFile() {
 		mWifiCache = new File(WIFI_CACHE_PATH);
