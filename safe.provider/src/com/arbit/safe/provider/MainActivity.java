@@ -257,6 +257,46 @@ public class MainActivity extends Activity {
 
 	};
 
+	public ArrayList<ArrayList<String>> outputLocation(ArrayList<ArrayList<String>> locationArray) {
+		// add legitimate fake requests
+		ArrayList<ArrayList<String>> output = new ArrayList<ArrayList<String>>();
+		int numOfCache = mCacheDataArray.get(0).size();
+		double fakeLongitude = 0;
+		double fakeLatitude = 0;
+
+		for (int j = 0; j < locationArray.get(0).size(); j++) {
+			if (numOfCache > 10) {
+
+				for (int i = 0; i < 5; i++) {
+					int randonNum = (int) (Math.random() * ((int) numOfCache / 2));
+					fakeLongitude += Double.parseDouble(mCacheDataArray.get(1)
+							.get(randonNum));
+					fakeLatitude += Double.parseDouble(mCacheDataArray.get(2)
+							.get(randonNum));
+				}
+				fakeLongitude = fakeLongitude / 5;
+				fakeLatitude = fakeLatitude / 5;
+			} else {
+				for (int i = 0; i < (int) (numOfCache / 2); i++) {
+					int randonNum = (int) (Math.random() * ((int) numOfCache / 2));
+					fakeLongitude += Double.parseDouble(mCacheDataArray.get(1)
+							.get(randonNum));
+					fakeLatitude += Double.parseDouble(mCacheDataArray.get(2)
+							.get(randonNum));
+				}
+				fakeLongitude = fakeLongitude / (int) (numOfCache / 2);
+				fakeLatitude = fakeLatitude / (int) (numOfCache / 2);
+			}
+			output.add(locationArray.get(j));
+			ArrayList<String> tmpList = new ArrayList<String>();
+			tmpList.add(String.valueOf(fakeLongitude));
+			tmpList.add(String.valueOf(fakeLatitude));
+			output.add(tmpList);
+		}
+
+		return output;
+	}
+
 	private ArrayList<String> reconstructLocation(double longitude,
 			double latitude) {
 		ArrayList<ArrayList<String>> decomposeAP = decompose(longitude,
