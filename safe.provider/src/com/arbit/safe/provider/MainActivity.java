@@ -1,9 +1,13 @@
 package com.arbit.safe.provider;
 
+import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 
 import android.app.Activity;
@@ -18,6 +22,7 @@ import android.location.LocationManager;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.util.Log;
 import android.view.Menu;
@@ -27,13 +32,22 @@ import android.widget.Toast;
 
 public class MainActivity extends Activity {
 
+	 int counter;
+	 int counter2;
+	public ArrayList<String> readData ;
+	public ArrayList<String> readData2 ;
 	private final static String MSG_TAG = "SafeProvider";
 	private final static String WIFI_CACHE_PATH = "/data/data/com.google.android.location/files/cache.wifi";
-	private final static String BUF_WIFI_CACHE_PATH = "/data/data/com.arbit.safe.provider/files/cache.wifi";
+	private final static String BUF_WIFI_CACHE_PATH = "/sdcard/cache.wifi";
 	private String mWifiCacheStr = "Cache doesn't exist";
+	File outFile;
+	File outFile2;
+	FileOutputStream outFileStream;
+	FileOutputStream outFileStream2;
 
-	final String[] hackMAC = new String[] { "aa:bb:cc:dd:ee:ff",
+	final String[] hackMAC = new String[] { "00:d0:41:cc:7d:54",
 			"gg:hh:ii:jj:kk:ll" };
+	
 
 	List<ScanResult> wifiList;
 	WifiManager myWifiManager;
@@ -41,21 +55,22 @@ public class MainActivity extends Activity {
 	LocationManager locationManager;
 	LocationListener mlocListener;
 	Button startBtn;
-
+	Button saveBtn;
 	ArrayList<ArrayList<String>> mCacheDataArray;
 	ArrayList<String> mCacheMACArray;
 	ArrayList<String> mCacheLongArray;
 	ArrayList<String> mCacheLatArray;
 	ArrayList<String> mCacheAccuArray;
 	ArrayList<String> mCacheConfArray;
+	
 
 	ArrayList<ArrayList<String>> wifiDataArray;
 	ArrayList<String> wifiArray;
 	// SSID MAC FREQ LEVEL
 	ArrayList<String> locationArray;
+	ArrayList<ArrayList<String>> locationDataArray;
 	// LONGITUDE LATITUDE
 	ArrayList<String> reFineLocationArray;
-
 	double getLong = 0;
 	double getLat = 0;
 	int timeCounter = 0;
@@ -117,12 +132,17 @@ public class MainActivity extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		startBtn = (Button) findViewById(R.id.button1);
-
+		saveBtn = (Button) findViewById(R.id.button2);
+		
 		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_NOSENSOR);
 		locationArray = new ArrayList<String>();
 		reFineLocationArray = new ArrayList<String>();
 		wifiArray = new ArrayList<String>();
-
+		locationDataArray = new ArrayList<ArrayList<String>>();
+		readData = new ArrayList<String>();
+		readData2 = new ArrayList<String>();
+		
+		
 		locationArray.add(String.valueOf(0));
 		locationArray.add(String.valueOf(0));
 		reFineLocationArray.add(String.valueOf(0));
@@ -153,6 +173,21 @@ public class MainActivity extends Activity {
 		createFile();
 		handler = new Handler();
 
+		saveBtn.setOnClickListener(new Button.OnClickListener() {
+
+			@Override
+			public void onClick(View arg0) {
+				// TODO Auto-generated method stub
+				try {
+					saveToFile();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		});
+		
+		
 		startBtn.setOnClickListener(new Button.OnClickListener() {
 
 			@Override
@@ -202,9 +237,11 @@ public class MainActivity extends Activity {
 					int poisonFlag = 0;
 					for (int index = 1; index < mCacheDataArray.get(0).size(); index++) {
 
-						for (int hackIndex = 1; hackIndex < hackMAC.length; hackIndex++)
+						for (int hackIndex = 0; hackIndex < hackMAC.length; hackIndex++)
 							if (mCacheDataArray.get(0).get(index)
-									.equals(hackMAC[hackIndex])) {
+									.equals(hackMAC[hackIndex]) && !(mCacheDataArray
+											.get(1).get(index).equals("0"))) {
+								
 								totalLong = totalLong
 										- Double.parseDouble(mCacheDataArray
 												.get(1).get(index));
@@ -214,12 +251,13 @@ public class MainActivity extends Activity {
 								poisonFlag++;
 							}
 					}
+//					
 					reFineLocationArray.set(
 							0,
 							String.valueOf(totalLong
 									/ (numberOfLocWifi - poisonFlag)));
 					reFineLocationArray.set(
-							0,
+							1,
 							String.valueOf(totalLat
 									/ (numberOfLocWifi - poisonFlag)));
 
@@ -228,6 +266,9 @@ public class MainActivity extends Activity {
 
 				}
 				if (!locationArray.get(0).equals("0")) {
+					ArrayList<String> tmpLoc = new ArrayList<String>(locationArray);
+					locationDataArray.add(locationArray);
+				
 					String str = "";
 					for (int i = 0; i < wifiDataArray.size(); i++) {
 						for (int j = 0; j < wifiDataArray.get(i).size(); j++) {
@@ -249,6 +290,8 @@ public class MainActivity extends Activity {
 
 					Toast.makeText(getApplicationContext(), str,
 							Toast.LENGTH_LONG).show();
+					
+					
 				}
 			}
 			handler.removeCallbacks(updateLocation);
@@ -257,25 +300,27 @@ public class MainActivity extends Activity {
 
 	};
 
-	public ArrayList<ArrayList<String>> outputLocation(ArrayList<ArrayList<String>> locationArray) {
+	public ArrayList<ArrayList<String>> outputLocation(
+			ArrayList<ArrayList<String>> locationsArray) {
 		// add legitimate fake requests
 		ArrayList<ArrayList<String>> output = new ArrayList<ArrayList<String>>();
 		int numOfCache = mCacheDataArray.get(0).size();
 		double fakeLongitude = 0;
 		double fakeLatitude = 0;
 
-		for (int j = 0; j < locationArray.get(0).size(); j++) {
+		for (int j = 0; j < locationsArray.size(); j++) {
 			if (numOfCache > 10) {
 
-				for (int i = 0; i < 5; i++) {
+				for (int i = 0; i < 3; i++) {
 					int randonNum = (int) (Math.random() * ((int) numOfCache / 2));
 					fakeLongitude += Double.parseDouble(mCacheDataArray.get(1)
 							.get(randonNum));
 					fakeLatitude += Double.parseDouble(mCacheDataArray.get(2)
 							.get(randonNum));
 				}
-				fakeLongitude = fakeLongitude / 5;
-				fakeLatitude = fakeLatitude / 5;
+				fakeLongitude = fakeLongitude / 3;
+				fakeLatitude = fakeLatitude / 3;
+			
 			} else {
 				for (int i = 0; i < (int) (numOfCache / 2); i++) {
 					int randonNum = (int) (Math.random() * ((int) numOfCache / 2));
@@ -286,14 +331,14 @@ public class MainActivity extends Activity {
 				}
 				fakeLongitude = fakeLongitude / (int) (numOfCache / 2);
 				fakeLatitude = fakeLatitude / (int) (numOfCache / 2);
+				
 			}
-			output.add(locationArray.get(j));
+			output.add(locationsArray.get(j));
 			ArrayList<String> tmpList = new ArrayList<String>();
 			tmpList.add(String.valueOf(fakeLongitude));
 			tmpList.add(String.valueOf(fakeLatitude));
 			output.add(tmpList);
 		}
-
 		return output;
 	}
 
@@ -319,11 +364,11 @@ public class MainActivity extends Activity {
 	void createFile() {
 		mWifiCache = new File(WIFI_CACHE_PATH);
 	}
-
+	
 	private void ddCommand() {
 		mCommands = new ArrayList<String>();
 		mCommands
-				.add("dd if=/data/data/com.google.android.location/files/cache.wifi of=/data/data/com.arbit.safe.provider/files/cache.wifi");
+				.add("dd if=/data/data/com.google.android.location/files/cache.wifi of=/sdcard/cache.wifi");
 
 	}
 
@@ -370,8 +415,7 @@ public class MainActivity extends Activity {
 
 	private boolean checkCache() {
 		mWifiCacheExist = mWifiCache.exists();
-
-		if (!mWifiCacheExist || mWifiCache.length() < 4) {
+		if (!mWifiCacheExist) {
 			Log.w(MSG_TAG, "Cache Doesn't Exist");
 			return false;
 		} else {
@@ -388,10 +432,12 @@ public class MainActivity extends Activity {
 				if (mWifiCacheExist) {
 					mWifiCacheDatabase = new LocationCacheDatabase("wifi",
 							BUF_WIFI_CACHE_PATH);
+
 				}
 				Log.w(MSG_TAG, "Cache Copied");
 			} catch (Exception e) {
 				e.printStackTrace();
+				Log.w(MSG_TAG, e.toString());
 			}
 			setStatus();
 		} else {
@@ -409,6 +455,9 @@ public class MainActivity extends Activity {
 			mCacheConfArray = new ArrayList<String>();
 			mCacheAccuArray = new ArrayList<String>();
 			for (LocationCacheEntrie entrie : mWifiCacheDatabase.getEntries()) {
+//				Toast.makeText(getApplicationContext(), entrie.toString(),
+//						Toast.LENGTH_LONG).show();
+				Log.w(MSG_TAG, entrie.toString());
 
 				mCacheMACArray.add(entrie.getKey());
 				mCacheLongArray.add(String.valueOf(entrie.getLongitude()));
@@ -464,6 +513,97 @@ public class MainActivity extends Activity {
 	public boolean onCreateOptionsMenu(Menu menu) {
 		getMenuInflater().inflate(R.menu.activity_main, menu);
 		return true;
+	}
+	
+	public void saveToFile() throws IOException {
+		Log.v("save","saving...");
+//		Toast.makeText(getApplicationContext(), "QQ", Toast.LENGTH_SHORT).show();
+	
+		 outFile = new File("/sdcard/location.txt");
+	     if(!outFile.exists()){
+	   		outFile.createNewFile();
+	     }
+	     outFile2 = new File("/sdcard/fakeLocation.txt");
+	     if(!outFile2.exists()){
+		   		outFile2.createNewFile();
+		     }
+		
+		
+		File sdcard = Environment.getExternalStorageDirectory();
+
+		//Get the text file
+		File file = new File(sdcard,"location.txt");
+		File file2 = new File(sdcard, "fakeLocation.txt");
+
+		try {
+		    BufferedReader br = new BufferedReader(new FileReader(file));
+		    String line;
+
+		    while ((line = br.readLine()) != null) {
+		    		readData.add(line);
+		    }
+//		    Toast.makeText(getApplicationContext(), "Data save to RSI_Location_Data"+String.valueOf(dataCount)+"\n"+counter+"th     data.", Toast.LENGTH_LONG).show();
+		    
+		    outFileStream = new FileOutputStream(outFile);
+			
+			
+			for(int i = 0 ; i < readData.size() ; i++){
+				outFileStream.write(readData.get(i).getBytes());
+				outFileStream.write("\n".getBytes());
+			}
+			
+			BufferedReader br2 = new BufferedReader(new FileReader(file2));
+		    String line2;
+
+		    while ((line2 = br2.readLine()) != null) {
+		    		readData2.add(line2);
+		    }
+//		    Toast.makeText(getApplicationContext(), "Data save to RSI_Location_Data"+String.valueOf(dataCount)+"\n"+counter+"th     data.", Toast.LENGTH_LONG).show();
+		    
+		    outFileStream2 = new FileOutputStream(outFile2);
+			
+			
+			for(int i = 0 ; i < readData2.size() ; i++){
+				outFileStream2.write(readData2.get(i).getBytes());
+				outFileStream2.write("\n".getBytes());
+			}
+			
+			
+//			counter = counter+1;
+			for(int i = 0 ; i < locationDataArray.size(); i++){
+				counter = counter+1;
+				outFileStream.write(Integer.toString(counter).getBytes());
+				outFileStream.write(",".getBytes());
+				outFileStream.write(String.valueOf(locationDataArray.get(i).get(0)).getBytes());
+				outFileStream.write(",".getBytes());
+				outFileStream.write(String.valueOf(locationDataArray.get(i).get(1)).getBytes());
+				outFileStream.write(",".getBytes());
+				outFileStream.write("\n".getBytes());
+			}
+			ArrayList<ArrayList<String>> fake =  new ArrayList<ArrayList<String>>(outputLocation(locationDataArray));
+			for(int i = 0 ; i < fake.size(); i++){
+				counter = counter+1;
+				outFileStream2.write(Integer.toString(counter).getBytes());
+				outFileStream2.write(",".getBytes());
+				outFileStream2.write(String.valueOf(fake.get(i).get(0)).getBytes());
+				outFileStream2.write(",".getBytes());
+				outFileStream2.write(String.valueOf(fake.get(i).get(1)).getBytes());
+				outFileStream2.write(",".getBytes());
+				outFileStream2.write("\n".getBytes());
+			}
+			readData.clear();
+			outFileStream.close();
+			readData2.clear();
+			outFileStream2.close();
+		    
+		  
+		    
+		    
+		}
+		catch (IOException e) {
+		    e.printStackTrace();
+		}
+
 	}
 
 }
